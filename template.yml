@@ -13,8 +13,20 @@ Parameters:
   Owner: 
     Type: String
     Description: Who owns this project - Email
+  GitHubAccessToken:
+    Type: String
+    Description: Name of parameter with GitHub access token
+    Default: codebuild-github-token
+    NoEcho: True
   
 Resources:
+  CodeBuildCredentials:
+    Type: AWS::CodeBuild::SourceCredential
+    Properties:
+      ServerType: GITHUB
+      AuthType: PERSONAL_ACCESS_TOKEN
+      Token: !Ref GitHubAccessToken
+
   CodeBuildAirflowRole:
     Type: AWS::IAM::Role
     Properties: 
