@@ -54,10 +54,11 @@ Resources:
         Statement:
           - Effect: Allow 
             Action: 
-              - "logs:CreatLogGroup"
+              - "logs:CreateLogGroup"
               - "logs:CreateLogStream"
               - "logs:PutLogEvents"
             Resource: !Sub  "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*"
+          - Effect: Allow
             Action: 
               - "s3:*" #Needs to be narrowed down
             Resource:
