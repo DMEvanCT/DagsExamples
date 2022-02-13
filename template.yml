@@ -45,8 +45,7 @@ Resources:
               - "logs:CreatLogGroup"
               - "logs:CreateLogStream"
               - "logs:PutLogEvents"
-            Resource: !Sub "arn::${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*"
-          - Effect: Allow
+            Resource: !Sub  "arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*"          - Effect: Allow
             Action: 
               - "s3:*" #Needs to be narrowed down
             Resource:
