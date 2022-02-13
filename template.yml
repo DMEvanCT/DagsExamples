@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to Deploy DAG codebuild (EXAMPLE)
+
+
+Parameters:
+  ArtifactBucket: 
+    Type: String 
+    Description: Artifact Bucket for DAG - Specificed in Airflow Setup
+  ProjectName:
+    Type: String
+    Description: Name of the Project
+    Default: Airflow
+  ComapnyName: 
+    Type: String
+    Descripton: Company name used for Role Path
+  Owner: 
+    Type: String
+    Description: Who owns this project - Email
+  
+Resources:
+  CodeBuildAirflowRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: Allow 
+            Principal: 
+              Service: 
+                - "codebuild.amazonaws.com"
+      Path: "/${ComapnyName}"
+      RoleName: Codebuild-${ProjectNaeme}Role
+      Tags: 
+        - Key: owner
+          Value: !Ref Owner
+
+  CodebuildAirflowPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument:
+        Version: "2021-10-17"
+        Statement:
+          - Effect: Allow 
+            Action: 
+              - "logs:CreatLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !Sub "arn::${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*"
+          - Effect: Allow
+            Action: 
+              - "s3:*" #Needs to be narrowed down
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
+              - !Sub  "arn:${AWS::Partition}:s3:::${ArtifactBucket}/*"
+          - Effect: Allow
+            Action: 
+              - "ec2:DescribeSecurityGroups"
+              - "ec2:DescribeSubnets"
+          - Effect: Allow
+            Action: 
+              - "codebuild:*" # Needs to be narrowed down
+            Resource: "*"
+      PolicyName: !Sub "Codebuild-${ProjectName}Policy"
+      Roles: CodeBuildAirflowRole
+
+  CodebuildAirflow: 
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub "Codebuild-${ProjectName}"
+      ServiceRole: {"Fn::GetAtt" : ["CodeBuildAirflowRole", "Arn"] }
+      Triggers:
+        BuildType: BUILD
+        Webhook: True
+        FilterGroups:
+        - - Type: EVENT
+            Pattern: PUSH,PULL_REQUEST_MERGED
+          - Type: HEAD_REF
+            Pattern: ^refs/heads/main$
+            ExcludeMatchedPattern: false
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment: 
+        Type: ARM_CONTAINER
+        ComputeType: "BUILD_GENERAL1_SMALL"
+        Image: "aws/codebuild/amazonlinux2-aarch64-standard:2.0"
+        EnvironmentVariables:
+          - Name: ArtifactBucket
+            Value: !Ref ArtifactBucket
+      Source: 
+        Type: Github
+        Location:  "https://github.com/DMEvanCT/DagsExamples"
+
+
+

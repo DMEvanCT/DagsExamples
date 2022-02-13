@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - aws s3 sync dags/ s3://${ArtifactBucket}/dags/
+      - aws s3 cp requirements.txt s3://${ArtifactBucket}/
+
+  post_build:
+    commands:
+      - echo Entered the post_build phase...
+      - echo Build completed on `date`
+
+artifacts: 
+  files: 
+    - dags/*.py
+
+
