@@ -12,7 +12,7 @@ Parameters:
     Default: Airflow
   ComapnyName: 
     Type: String
-    Descripton: Company name used for Role Path
+    Description: Company name used for Role Path
   Owner: 
     Type: String
     Description: Who owns this project - Email
@@ -23,13 +23,18 @@ Resources:
     Properties: 
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
-        Statement: 
-          - Effect: Allow 
-            Principal: 
-              Service: 
-                - "codebuild.amazonaws.com"
-      Path: "/${ComapnyName}"
-      RoleName: Codebuild-${ProjectNaeme}Role
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+            Resource:
+              - '*'
+      Path: !Sub "/${ComapnyName}"
+      Description: Role for Codebuild Airflow
+      RoleName: !Sub "Codebuild-${ProjectName}Role"
       Tags: 
         - Key: owner
           Value: !Ref Owner
@@ -38,7 +43,7 @@ Resources:
     Type: AWS::IAM::Policy
     Properties: 
       PolicyDocument:
-        Version: "2021-10-17"
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow 
             Action: 
@@ -56,12 +61,15 @@ Resources:
             Action: 
               - "ec2:DescribeSecurityGroups"
               - "ec2:DescribeSubnets"
+            Resource: 
+              - "*"
           - Effect: Allow
             Action: 
               - "codebuild:*" # Needs to be narrowed down
             Resource: "*"
       PolicyName: !Sub "Codebuild-${ProjectName}Policy"
-      Roles: CodeBuildAirflowRole
+      Roles: 
+        - CodeBuildAirflowRole
 
   CodebuildAirflow: 
     Type: AWS::CodeBuild::Project
@@ -87,7 +95,7 @@ Resources:
           - Name: ArtifactBucket
             Value: !Ref ArtifactBucket
       Source: 
-        Type: Github
+        Type: GITHUB
         Location:  "https://github.com/DMEvanCT/DagsExamples"
 
 
