@@ -222,7 +222,7 @@ Resources:
     Type: AWS::MWAA::Environment
     Properties: 
       AirflowVersion: "2.0.2"
-      DagS3Path: !Sub  "/dags"
+      DagS3Path: !Sub  "dags/"
       EnvironmentClass: !Ref EnvironmentClass
       ExecutionRoleArn: {"Fn::GetAtt" : ["AirflowRole", "Arn"] }
       Name: !Sub "${ProjectName}-Airflow"
@@ -232,7 +232,7 @@ Resources:
         SubnetIds: 
           - !Ref SubnetOne
           - !Ref SubnetTwo
-      RequirementsS3Path: !Sub "/requirements.txt"
+      RequirementsS3Path: !Sub "requirements.txt"
       SourceBucketArn: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
       Tags: 
         Owner: !Ref Owner
