@@ -219,7 +219,17 @@ Resources:
               - "kms:DescribeKey"
               - "kms:GenerateDataKey*"
               - "kms:Encrypt"
-            Resource: !Sub "arn:aws:kms:*:${AWS::AccountId}:key/*"
+            NotResource: !Sub "arn:aws:kms:*:${AWS::AccountId}:key/*"
+            Condition: 
+              StringLike:
+                 "kms:ViaService": 
+                    - "sqs.us-east-1.amazonaws.com"
+          - Effect: Deny
+            Action: 
+              - "s3:ListAllMyBuckets"
+            Resource: 
+              - !Sub "arn:aws:s3:::{ArtifactBucket}",
+              - !Sub "arn:aws:s3:::${ArtifactBucket}/*"
       PolicyName: !Sub "Codebuild-${ProjectName}Policy"
       Roles: 
         - !Ref AirflowRole
@@ -245,6 +255,3 @@ Resources:
         Owner: !Ref Owner
       WebserverAccessMode: PUBLIC_ONLY
       WeeklyMaintenanceWindowStart: TUE:03:30
-
-
-
