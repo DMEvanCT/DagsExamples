@@ -53,20 +53,20 @@ Resources:
       GroupName: !Sub "${ProjectName}-SecurityGroup-Airflow"
       SecurityGroupEgress: 
         - Description: "Permit All Outbound"
-           IpProtocol: tcp
-           FromPort: 0
-           ToPort: 65535
-           CidrIP: "0.0.0.0/0"     
+          IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: "0.0.0.0/0"     
       SecurityGroupIngress: 
         - Description: "Permit HTTPS inbound"
-           IpProtocol: tcp
-           FromPort: 443
-           ToPort: 443
-           CidrIP: "0.0.0.0/0"      
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "0.0.0.0/0"    
       Tags: 
         - Key: Owner
           Value: !Ref Owner
-      VpcId: String
+      VpcId: !Ref VPCId
 
   CodeBuildAirflowRole:
     Type: AWS::IAM::Role
@@ -174,12 +174,12 @@ Resources:
         Statement:
           - Effect: Allow 
             Action: 
-              - "s3:GetObject*",
-              - "s3:GetBucket*",
+              - "s3:GetObject*"
+              - "s3:GetBucket*"
               - "s3:List*"
             Resource: 
-              - !Sub  "arn:aws:s3:::${ArtifactBucket}",
-              - !Sub   "arn:aws:s3:::${ArtifactBucket}/*""
+              - !Sub  "arn:aws:s3:::${ArtifactBucket}"
+              - !Sub   "arn:aws:s3:::${ArtifactBucket}/*"
           - Effect: Allow
             Action: "airflow:PublishMetrics"
             Resource: !Sub "arn:aws:airflow:${AWS::Region}:${AWS::AccountId}:environment/${ProjectName}-Airflow"
@@ -204,7 +204,7 @@ Resources:
             Action: "cloudwatch:PutMetricData"
             Resource: "*"
           - Effect: Allow 
-            Actions: 
+            Action: 
               - "sqs:ChangeMessageVisibility"
               - "sqs:DeleteMessage"
               - "sqs:GetQueueAttributes"
@@ -220,26 +220,24 @@ Resources:
 
   AWSAirflow:
     Type: AWS::MWAA::Environment
-      Properties: 
-        AirflowConfigurationOptions: Json
-        AirflowVersion: "2.0.2"
-        DagS3Path: !Sub  "arn:${AWS::Partition}:s3:::${ArtifactBucket}/dags/"
-        EnvironmentClass: !Ref EnvironmentClass
-        ExecutionRoleArn: {"Fn::GetAtt" : ["AirflowRole", "GroupId"] }
-        Name: !Sub "${ProjectName}-Airflow"
-        NetworkConfiguration: 
-          SecurityGroupIds: 
-            - {"Fn::GetAtt" : ["AirflowSecurityGroup", "Arn"] } 
-          SubnetIds: 
-            - !Ref SubnetOne
-            - !Ref SubnetTwo
-        RequirementsS3Path: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}/requirements.txt"
-        SourceBucketArn: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
-        Tags: 
-        - Key: Owner
-          Value: !Ref Owner   
-        WebserverAccessMode: PUBLIC_ONLY
-        WeeklyMaintenanceWindowStart: TUE:03:30
+    Properties: 
+      AirflowVersion: "2.0.2"
+      DagS3Path: !Sub  "arn:${AWS::Partition}:s3:::${ArtifactBucket}/dags/"
+      EnvironmentClass: !Ref EnvironmentClass
+      ExecutionRoleArn: {"Fn::GetAtt" : ["AirflowRole", "Arn"] }
+      Name: !Sub "${ProjectName}-Airflow"
+      NetworkConfiguration: 
+        SecurityGroupIds: 
+          - {"Fn::GetAtt" : ["AirflowSecurityGroup", "GroupId"] } 
+        SubnetIds: 
+          - !Ref SubnetOne
+          - !Ref SubnetTwo
+      RequirementsS3Path: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}/requirements.txt"
+      SourceBucketArn: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
+      Tags: 
+        Owner: !Ref Owner
+      WebserverAccessMode: PUBLIC_ONLY
+      WeeklyMaintenanceWindowStart: TUE:03:30
 
 
 
