@@ -18,6 +18,25 @@ Parameters:
     Description: Name of parameter with GitHub access token
     Default: codebuild-github-token
     NoEcho: True
+  EnvironmentClass:
+    Type: String
+    Description: Environment Class Airflow
+    Default: mw1.small
+    AllowedValues:
+      - mw1.small
+      - mw1.medium
+      - mw1.large
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: AWS VPC for Airflow Deployment
+  SubnetOne:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet 1 for MWAA
+  SubnetTwo:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet 2 for MWAA
+   
+
   
 Resources:
   CodeBuildCredentials:
@@ -26,6 +45,28 @@ Resources:
       ServerType: GITHUB
       AuthType: PERSONAL_ACCESS_TOKEN
       Token: !Ref GitHubAccessToken
+  
+  AirflowSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: "Security Group For Airflow Deployment"
+      GroupName: !Sub "${ProjectName}-SecurityGroup-Airflow"
+      SecurityGroupEgress: 
+        - Description: "Permit All Outbound"
+          IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: "0.0.0.0/0"     
+      SecurityGroupIngress: 
+        - Description: "Permit HTTPS inbound"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "0.0.0.0/0"    
+      Tags: 
+        - Key: Owner
+          Value: !Ref Owner
+      VpcId: !Ref VPCId
 
   CodeBuildAirflowRole:
     Type: AWS::IAM::Role
@@ -105,5 +146,112 @@ Resources:
         Type: GITHUB
         Location:  "https://github.com/DMEvanCT/DagsExamples"
 
+  AirflowRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "airflow.amazonaws.com"
+                - "airflow-env.amazonaws.com"
+            Action:
+              - 'sts:AssumeRole'
+      Path:  "/Company/" #Path this howeever you want company name is a good option
+      Description: Role for Codebuild Airflow
+      RoleName: !Sub "Airflow-${ProjectName}Role"
+      Tags: 
+        - Key: owner
+          Value: !Ref Owner
+
+  AirflowPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow 
+            Action: 
+              - "s3:GetObject*"
+              - "s3:GetBucket*"
+              - "s3:List*"
+            Resource: 
+              - !Sub  "arn:aws:s3:::${ArtifactBucket}"
+              - !Sub   "arn:aws:s3:::${ArtifactBucket}/*"
+          - Effect: Allow
+            Action: "airflow:PublishMetrics"
+            Resource: !Sub "arn:aws:airflow:${AWS::Region}:${AWS::AccountId}:environment/${ProjectName}-Airflow"
+          - Effect: Allow
+            Action: 
+              - "logs:CreateLogStream"
+              - "logs:CreateLogGroup"
+              - "logs:PutLogEvents"
+              - "logs:GetLogEvents"
+              - "logs:GetLogRecord"
+              - "logs:GetLogGroupFields"
+              - "logs:GetQueryResults"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:airflow-*"
+          - Effect: Allow
+            Action: 
+              - "logs:DescribeLogGroups"
+            Resource: "*"
+          - Effect: Allow
+            Action: "s3:GetAccountPublicAccessBlock"
+            Resource: "*"
+          - Effect: Allow
+            Action: "cloudwatch:PutMetricData"
+            Resource: "*"
+          - Effect: Allow 
+            Action: 
+              - "sqs:ChangeMessageVisibility"
+              - "sqs:DeleteMessage"
+              - "sqs:GetQueueAttributes"
+              - "sqs:GetQueueUrl"
+              - "sqs:ReceiveMessage"
+              - "sqs:SendMessage"
+            Resource: 
+              - !Sub arn:aws:sqs:${AWS::Region}:*:airflow-celery-*
+          - Effect: Allow
+            Action: 
+              - "kms:Decrypt"
+              - "kms:DescribeKey"
+              - "kms:GenerateDataKey*"
+              - "kms:Encrypt"
+            NotResource: !Sub "arn:aws:kms:*:${AWS::AccountId}:key/*"
+            Condition: 
+              StringLike:
+                 "kms:ViaService": 
+                    - "sqs.us-east-1.amazonaws.com"
+          - Effect: Deny
+            Action: 
+              - "s3:ListAllMyBuckets"
+            Resource: 
+              - !Sub "arn:aws:s3:::{ArtifactBucket}",
+              - !Sub "arn:aws:s3:::${ArtifactBucket}/*"
+      PolicyName: !Sub "Codebuild-${ProjectName}Policy"
+      Roles: 
+        - !Ref AirflowRole
 
 
+  AWSAirflow:
+    Type: AWS::MWAA::Environment
+    Properties: 
+      AirflowVersion: "2.0.2"
+      DagS3Path: !Sub  "dags/"
+      EnvironmentClass: !Ref EnvironmentClass
+      ExecutionRoleArn: {"Fn::GetAtt" : ["AirflowRole", "Arn"] }
+      Name: !Sub "${ProjectName}-Airflow"
+      NetworkConfiguration: 
+        SecurityGroupIds: 
+          - {"Fn::GetAtt" : ["AirflowSecurityGroup", "GroupId"] } 
+        SubnetIds: 
+          - !Ref SubnetOne
+          - !Ref SubnetTwo
+      RequirementsS3Path: !Sub "requirements.txt"
+      SourceBucketArn: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
+      Tags: 
+        Owner: !Ref Owner
+      WebserverAccessMode: PUBLIC_ONLY
+      WeeklyMaintenanceWindowStart: TUE:03:30
