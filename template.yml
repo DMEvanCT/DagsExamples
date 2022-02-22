@@ -213,6 +213,13 @@ Resources:
               - "sqs:SendMessage"
             Resource: 
               - !Sub arn:aws:sqs:${AWS::Region}:*:airflow-celery-*
+          - Effect: Allow
+            Action: 
+              - "kms:Decrypt"
+              - "kms:DescribeKey"
+              - "kms:GenerateDataKey*"
+              - "kms:Encrypt"
+            Resource: !Sub "arn:aws:kms:*:${AWS::AccountId}:key/*"
       PolicyName: !Sub "Codebuild-${ProjectName}Policy"
       Roles: 
         - !Ref AirflowRole
